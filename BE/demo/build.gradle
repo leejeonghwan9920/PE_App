@@ -19,6 +19,7 @@ repositories {
 
 dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-web'
+	implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.9'
 	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
 	implementation 'org.springframework.boot:spring-boot-starter-validation'
 	implementation 'org.springframework.security:spring-security-crypto'
@@ -38,4 +39,28 @@ dependencies {
 
 tasks.named('test') {
 	useJUnitPlatform()
+}
+
+tasks.register('bootRunH2', org.springframework.boot.gradle.tasks.run.BootRun) {
+	dependsOn tasks.named('testClasses')
+	group = 'application'
+	description = 'Run the API locally with an isolated, disposable H2 test database.'
+	mainClass = 'com.umc.movie.DemoApplication'
+	classpath = sourceSets.test.runtimeClasspath
+	args '--spring.profiles.active=test', '--server.address=127.0.0.1', '--server.port=3037',
+		'--spring.datasource.url=jdbc:h2:mem:movie-week09-preview;MODE=MySQL;DB_CLOSE_DELAY=-1',
+		'--movie.jwt.access-expiration=3600'
+}
+
+tasks.register('week09Test', Test) {
+	group = 'verification'
+	description = 'Run only week09 service, API and OpenAPI contract tests.'
+	testClassesDirs = sourceSets.test.output.classesDirs
+	classpath = sourceSets.test.runtimeClasspath
+	useJUnitPlatform()
+	filter {
+		includeTestsMatching 'com.umc.movie.service.FavoriteServiceTest'
+		includeTestsMatching 'com.umc.movie.controller.FavoriteApiTest'
+		includeTestsMatching 'com.umc.movie.controller.OpenApiContractTest'
+	}
 }

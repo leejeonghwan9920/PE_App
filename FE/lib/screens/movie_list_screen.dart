@@ -5,125 +5,70 @@ import 'package:provider/provider.dart';
 import '../models/tmdb_movie_dto.dart';
 import '../services/movie_list_preferences.dart';
 import '../theme/app_colors.dart';
-import '../view_models/movie_home_view_model.dart';
 import '../view_models/movie_list_view_model.dart';
-import '../widgets/movie_grid.dart';
+import '../view_models/load_phase.dart';
+import '../widgets/paged_movie_grid.dart';
 import '../widgets/movie_list_states.dart';
 
 class MovieListScreen extends StatefulWidget {
   const MovieListScreen({super.key});
-
   @override
   State<MovieListScreen> createState() => _MovieListScreenState();
 }
 
 class _MovieListScreenState extends State<MovieListScreen> {
-  MovieListViewModel? _viewModel;
-  int _seenFailure = 0;
-  bool _dialogOpen = false;
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    final next = context.read<MovieListViewModel>();
-    if (identical(next, _viewModel)) return;
-    _viewModel?.removeListener(_onChanged);
-    _viewModel = next;
-    _viewModel!.addListener(_onChanged);
-    _onChanged();
-  }
-
-  void _onChanged() {
-    final vm = _viewModel!;
-    if (vm.failureRevision <= _seenFailure || _dialogOpen) return;
-    _seenFailure = vm.failureRevision;
-    _dialogOpen = true;
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      if (!mounted) return;
-      final retry = await showDialog<bool>(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('영화 요청 실패'),
-          content: Text(vm.errorMessage ?? '네트워크 연결을 확인해 주세요.'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('취소'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text('재시도'),
-            ),
-          ],
-        ),
-      );
-      _dialogOpen = false;
-      if (retry == true && mounted) await vm.load();
-    });
-  }
-
-  @override
-  void dispose() {
-    _viewModel?.removeListener(_onChanged);
-    super.dispose();
+  bool _automatic = false;
+  Future<void> _selectGenres(List<int>? ids) async {
+    final vm = context.read<MovieListViewModel>();
+    try {
+      await vm.preferences.saveGenres(ids?.map((id) => '$id').toSet() ?? {});
+    } catch (_) {}
+    if (!mounted) return;
+    final uri = Uri(
+      path: '/movies',
+      queryParameters: ids == null || ids.isEmpty
+          ? null
+          : {'genre': ids.map((id) => '$id').toList()},
+    );
+    context.go(uri.toString());
   }
 
   Future<void> _openGenreFilter() async {
     final vm = context.read<MovieListViewModel>();
-    if (vm.isLoading) return;
-    final result = await showModalBottomSheet<Set<int>>(
+    final selected = await showModalBottomSheet<Set<int>>(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => _GenreFilterSheet(
+      builder: (_) => _GenreFilterSheet(
         genres: vm.genres,
         selectedGenres: vm.selectedGenreIds?.toSet() ?? {},
       ),
     );
-    if (result == null || !mounted || vm.isLoading) return;
-    final uri = Uri(
-      path: '/movies',
-      queryParameters: result.isEmpty
-          ? null
-          : {'genre': result.map((id) => '$id').toList()},
-    );
-    context.go(uri.toString());
-    await vm.selectGenres(result.toList());
+    if (selected != null && mounted) await _selectGenres(selected.toList());
   }
 
   @override
   Widget build(BuildContext context) {
     final vm = context.watch<MovieListViewModel>();
-    final movies = vm.visibleMovies;
-    Widget content;
-    if (vm.isLoading && movies.isEmpty) {
-      content = const MovieListLoading();
-    } else if (vm.status == MovieLoadStatus.error && movies.isEmpty) {
-      content = MovieListError(
-        onRetry: () => context.read<MovieListViewModel>().load(),
-      );
-    } else {
-      content = movies.isEmpty
-          ? const MovieListEmpty()
-          : MovieGrid(movies: movies);
-    }
     return Scaffold(
       appBar: AppBar(
         title: const Text('영화'),
-        titleSpacing: 16,
-        toolbarHeight: 64,
+        actions: [
+          IconButton(
+            tooltip: '영화 검색',
+            onPressed: () => context.push('/movies/search'),
+            icon: const Icon(Icons.search),
+          ),
+        ],
       ),
       body: Column(
         children: [
           _MovieListToolbar(
             selectedCount: vm.selectedGenreIds?.length ?? 0,
             sortOption: vm.sortOption,
-            onSortSelected: (option) =>
-                context.read<MovieListViewModel>().setSortOption(option),
-            onFilterPressed: vm.isLoading || vm.genres.isEmpty
-                ? null
-                : _openGenreFilter,
+            onSortSelected: vm.setSortOption,
+            onFilterPressed: vm.genres.isEmpty ? null : _openGenreFilter,
           ),
           if (vm.genres.isNotEmpty)
             SizedBox(
@@ -132,64 +77,52 @@ class _MovieListScreenState extends State<MovieListScreen> {
                 scrollDirection: Axis.horizontal,
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 children: [
-                  Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: FilterChip(
-                      label: const Text('전체'),
-                      selected:
-                          vm.selectedGenreIds == null ||
-                          vm.selectedGenreIds!.isEmpty,
-                      onSelected: vm.isLoading
-                          ? null
-                          : (_) => _selectChip(null),
-                    ),
+                  FilterChip(
+                    label: const Text('전체'),
+                    selected: vm.selectedGenreIds == null,
+                    onSelected: (_) => _selectGenres(null),
                   ),
                   ...vm.genres.map(
-                    (genre) => Padding(
-                      padding: const EdgeInsets.only(right: 8),
+                    (g) => Padding(
+                      padding: const EdgeInsets.only(left: 8),
                       child: FilterChip(
-                        label: Text(genre.name),
-                        selected:
-                            vm.selectedGenreIds?.contains(genre.id) ?? false,
-                        onSelected: vm.isLoading
-                            ? null
-                            : (selected) =>
-                                  _selectChip(selected ? [genre.id] : null),
+                        label: Text(g.name),
+                        selected: vm.selectedGenreIds?.contains(g.id) ?? false,
+                        onSelected: (selected) =>
+                            _selectGenres(selected ? [g.id] : null),
                       ),
                     ),
                   ),
                 ],
               ),
             ),
-          if (vm.isLoading && movies.isNotEmpty)
-            const LinearProgressIndicator(),
-          if (vm.status == MovieLoadStatus.error && movies.isNotEmpty)
-            const Padding(
-              padding: EdgeInsets.all(8),
-              child: Text('최근에 불러온 목록을 표시하고 있어요.'),
-            ),
+          SwitchListTile(
+            dense: true,
+            title: const Text('무한 스크롤'),
+            value: _automatic,
+            onChanged: (value) => setState(() => _automatic = value),
+          ),
           Expanded(
-            child: RefreshIndicator(
-              onRefresh: () => context.read<MovieListViewModel>().load(),
-              notificationPredicate: (notification) =>
-                  !vm.isLoading && notification.depth == 0,
-              child: content,
-            ),
+            child: switch (vm.phase) {
+              LoadPhase.idle || LoadPhase.loading => const MovieListLoading(),
+              LoadPhase.error => MovieListError(onRetry: vm.reset),
+              LoadPhase.empty => RefreshIndicator(
+                onRefresh: vm.reset,
+                child: const MovieListEmpty(),
+              ),
+              LoadPhase.success => RefreshIndicator(
+                onRefresh: vm.reset,
+                child: PagedMovieGrid(
+                  key: ValueKey('${vm.selectedGenreIds}-$_automatic'),
+                  vm: vm,
+                  automatic: _automatic,
+                ),
+              ),
+            },
           ),
         ],
       ),
     );
-  }
-
-  void _selectChip(List<int>? ids) {
-    final uri = Uri(
-      path: '/movies',
-      queryParameters: ids == null
-          ? null
-          : {'genre': ids.map((id) => '$id').toList()},
-    );
-    context.go(uri.toString());
-    context.read<MovieListViewModel>().selectGenres(ids);
   }
 }
 

@@ -1,4 +1,5 @@
 package com.umc.movie.controller;
+import io.swagger.v3.oas.annotations.Parameter;
 
 import com.umc.movie.auth.LoginMember;
 import com.umc.movie.dto.ApiResponse;
@@ -20,7 +21,7 @@ public class MovieRecordController {
 
     @PostMapping("/movie-records")
     public ResponseEntity<ApiResponse<MovieRecordResponse>> create(
-        @LoginMember Long memberId, @Valid @RequestBody CreateMovieRecordRequest request
+        @Parameter(hidden = true) @LoginMember Long memberId, @Valid @RequestBody CreateMovieRecordRequest request
     ) {
         return ResponseEntity.status(HttpStatus.CREATED)
             .body(ApiResponse.created("영화 기록을 저장했습니다.", movieRecords.create(memberId, request)));

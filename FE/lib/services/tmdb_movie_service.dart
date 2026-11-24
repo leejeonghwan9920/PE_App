@@ -48,6 +48,25 @@ class TmdbMovieService {
     return TmdbMoviePageDto.fromJson(response.data!);
   }
 
+  Future<TmdbMoviePageDto> searchMovies({
+    required String query,
+    required int page,
+    CancelToken? cancelToken,
+  }) async {
+    final normalized = query.trim();
+    if (normalized.isEmpty) throw ArgumentError('Empty search query');
+    final response = await client.get<Map<String, dynamic>>(
+      '/search/movie',
+      queryParameters: {
+        'query': normalized,
+        'page': page,
+        'include_adult': false,
+      },
+      cancelToken: cancelToken,
+    );
+    return TmdbMoviePageDto.fromJson(response.data!);
+  }
+
   Future<TmdbMovieDto> fetchDetail(int id, {CancelToken? cancelToken}) async {
     final response = await client.get<Map<String, dynamic>>(
       '/movie/$id',

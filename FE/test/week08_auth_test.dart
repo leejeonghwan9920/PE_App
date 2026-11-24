@@ -99,7 +99,7 @@ void main() {
     expect(storage.value, 'restored-token');
 
     adapter.reply = (request) {
-      expect(request.path, '/v7/members/me');
+      expect(request.path, '/v8/members/me');
       expect(request.headers['Authorization'], 'Bearer restored-token');
       return _wrap(200, _member);
     };
@@ -111,7 +111,7 @@ void main() {
   test('로그인 폼의 401은 만료 안내를 만들지 않고 보호 요청의 401만 정리한다', () async {
     await session.restore();
     adapter.reply = (request) {
-      expect(request.path, '/v7/auth/login');
+      expect(request.path, '/v8/auth/login');
       expect(request.headers['Authorization'], isNull);
       return _wrap(401, null, 'AUTH401_1');
     };
@@ -138,7 +138,7 @@ void main() {
     expect(session.takeExpiredNotice(), isFalse);
   });
 
-  test('토큰은 워크북의 보호 경로에만 붙고 평점은 v7 응답을 파싱한다', () async {
+  test('토큰은 워크북의 보호 경로에만 붙고 평점은 v8 응답을 파싱한다', () async {
     storage.value = 'rating-token';
     adapter.reply = (_) => _wrap(200, _member);
     await session.restore();
@@ -149,16 +149,16 @@ void main() {
       return _json(200, [_rating]);
     };
     expect((await api.fetchPublicRatings(42)).single.movieId, 550);
-    await dio.get<Object>('https://example.com/v7/members/me');
+    await dio.get<Object>('https://example.com/v8/members/me');
 
     adapter.reply = (request) {
       expect(request.headers['Authorization'], 'Bearer rating-token');
       if (request.method == 'POST') {
-        expect(request.path, '/v7/ratings');
+        expect(request.path, '/v8/ratings');
         expect(request.data, {'movieId': 550, 'score': 4});
         return _wrap(201, _rating);
       }
-      expect(request.path, '/v7/ratings/42');
+      expect(request.path, '/v8/ratings/42');
       if (request.method == 'PATCH') {
         return _wrap(200, {..._rating, 'score': 5});
       }
@@ -215,12 +215,12 @@ void main() {
     addTearDown(client.close);
     adapter.reply = (request) {
       return switch ((request.method, request.path)) {
-        ('POST', '/v7/auth/login') => _wrap(200, {
+        ('POST', '/v8/auth/login') => _wrap(200, {
           'nickname': '제임스',
           'accessToken': 'widget-token',
         }),
-        ('GET', '/v7/members/me') => _wrap(200, _member),
-        ('PATCH', '/v7/members/me') => _wrap(200, {
+        ('GET', '/v8/members/me') => _wrap(200, _member),
+        ('PATCH', '/v8/members/me') => _wrap(200, {
           ..._member,
           'nickname': '새이름',
         }),

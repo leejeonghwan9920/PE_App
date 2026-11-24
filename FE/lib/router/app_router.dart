@@ -4,6 +4,12 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../models/movie.dart';
+import '../services/favorite_api_service.dart';
+import '../view_models/favorite_detail_view_model.dart';
+import '../view_models/favorites_view_model.dart';
+import '../view_models/paged_movies_view_model.dart';
+import '../screens/favorites_screen.dart';
+import '../screens/movie_search_screen.dart';
 import '../services/tmdb_movie_service.dart';
 import '../view_models/movie_home_view_model.dart';
 import '../view_models/movie_list_view_model.dart';
@@ -133,17 +139,57 @@ abstract final class AppRouter {
           ),
         ),
         GoRoute(
+          path: '/my/favorites',
+          builder: (context, state) {
+            if (session == null) {
+              return const Scaffold(body: Center(child: Text('로그인이 필요합니다.')));
+            }
+            return ChangeNotifierProvider(
+              key: ValueKey('favorites-${session.generation}'),
+              create: (context) => FavoritesViewModel(
+                context.read<FavoriteApiService>(),
+                tmdbService ?? context.read<TmdbMovieService>(),
+                session,
+              )..refresh(),
+              child: const FavoritesScreen(),
+            );
+          },
+        ),
+        GoRoute(
+          path: '/movies/search',
+          builder: (context, state) => ChangeNotifierProvider(
+            create: (context) => PagedMoviesViewModel(
+              tmdbService ?? context.read<TmdbMovieService>(),
+              isSearch: true,
+            ),
+            child: const MovieSearchScreen(),
+          ),
+        ),
+        GoRoute(
           path: '/movies/:movieId',
           builder: (context, state) {
             final id = int.tryParse(state.pathParameters['movieId'] ?? '');
             if (id == null) return const _MovieNotFoundScreen();
             final movie = state.extra;
+            Widget wrap(Widget child) => session == null
+                ? child
+                : ChangeNotifierProvider(
+                    key: ValueKey('favorite-$id-${session.generation}'),
+                    create: (context) => FavoriteDetailViewModel(
+                      id,
+                      context.read<FavoriteApiService>(),
+                      session,
+                    )..load(),
+                    child: child,
+                  );
             if (movie is Movie && movie.id == id && movie.durationMinutes > 0) {
-              return MovieDetailScreen(movie: movie);
+              return wrap(MovieDetailScreen(movie: movie));
             }
-            return TmdbDetailLoader(
-              id: id,
-              service: tmdbService ?? context.read<TmdbMovieService>(),
+            return wrap(
+              TmdbDetailLoader(
+                id: id,
+                service: tmdbService ?? context.read<TmdbMovieService>(),
+              ),
             );
           },
         ),

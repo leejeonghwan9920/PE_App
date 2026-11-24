@@ -17,3 +17,8 @@ movie:
   jwt:
     secret: ${JWT_SECRET:}
     access-expiration: ${JWT_ACCESS_EXPIRATION:3600}
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui
+    persist-authorization: false

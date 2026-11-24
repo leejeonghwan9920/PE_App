@@ -62,7 +62,7 @@ void main() {
     expect(shortVm.movies.length, 2);
   });
 
-  test('페이지 중복 제거 후 30개, 장르 OR 전달과 전체 요청 생략', () async {
+  test('첫 페이지 후 더 보기로 중복 제거, 장르 OR 전달과 전체 요청 생략', () async {
     final requests = <RequestOptions>[];
     final client = createTmdbClient(
       token: 'test-only-token',
@@ -95,6 +95,8 @@ void main() {
     );
     addTearDown(vm.dispose);
     await vm.initialize();
+    expect(vm.movies.length, 20);
+    await vm.loadNextPage();
     expect(vm.movies.length, 30);
     expect(vm.movies.map((m) => m.id).toSet().length, 30);
     expect(
@@ -133,7 +135,7 @@ void main() {
     expect(vm.movies.length, 1);
   });
 
-  test('로딩 중 중복 호출과 장르 변경을 막고 실패 재시도에 마지막 장르를 쓴다', () async {
+  test('로딩 중 장르 변경은 새 요청으로 대체하고 실패 재시도에 최신 장르를 쓴다', () async {
     final service = TestTmdbService();
     final vm = MovieListViewModel(
       service,
@@ -144,17 +146,16 @@ void main() {
     service.delay = const Duration(milliseconds: 10);
     final pending = vm.selectGenres([878]);
     await vm.selectGenres([28]);
-    await vm.load();
     await pending;
-    expect(service.calls, 2);
-    expect(vm.selectedGenreIds, [878]);
+    expect(service.calls, 3);
+    expect(vm.selectedGenreIds, [28]);
     service.fail = true;
     await vm.load();
-    expect(vm.movies.single.id, 2);
+    expect(vm.movies, isEmpty);
     expect(vm.status, MovieLoadStatus.error);
     service.fail = false;
     await vm.load();
-    expect(service.requestedGenres.last, [878]);
+    expect(service.requestedGenres.last, [28]);
     expect(service.requestedPages.last, 1);
     expect(vm.status, MovieLoadStatus.success);
   });

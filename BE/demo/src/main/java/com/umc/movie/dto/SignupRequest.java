@@ -6,12 +6,12 @@ import java.nio.charset.StandardCharsets;
 public record SignupRequest(
     @NotBlank(message="이메일을 입력해주세요.")
     @Email(message="올바른 이메일 형식이 아닙니다.")
-    @Size(max=254, message="이메일은 254자 이하여야 합니다.") String email,
+    @Size(max=254, message="이메일은 254자 이하여야 합니다.") @io.swagger.v3.oas.annotations.media.Schema(example="challenger@example.com") String email,
     @NotBlank(message="닉네임을 입력해주세요.")
-    @Size(min=2,max=12,message="닉네임은 2~12자여야 합니다.") String nickname,
+    @Size(min=2,max=12,message="닉네임은 2~12자여야 합니다.") @io.swagger.v3.oas.annotations.media.Schema(example="영화조아") String nickname,
     @NotBlank(message="비밀번호를 입력해주세요.")
     @Pattern(regexp="^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[^A-Za-z0-9\\s])\\S{8,72}$",
-        message="비밀번호는 대문자·소문자·숫자·특수문자를 포함한 8~72자여야 합니다.") String password
+        message="비밀번호는 대문자·소문자·숫자·특수문자를 포함한 8~72자여야 합니다.") @io.swagger.v3.oas.annotations.media.Schema(example="Example123!", accessMode=io.swagger.v3.oas.annotations.media.Schema.AccessMode.WRITE_ONLY) String password
 ) {
     /**
      * 이메일과 닉네임의 앞뒤 공백을 제거한 가입 요청을 구성합니다.
@@ -31,6 +31,7 @@ public record SignupRequest(
      *
      * @return null이거나 UTF-8 인코딩 결과가 72바이트 이하이면 true
      */
+    @io.swagger.v3.oas.annotations.media.Schema(hidden = true)
     @AssertTrue(message="비밀번호는 UTF-8 기준 72바이트 이하여야 합니다.")
     public boolean isPasswordWithinBcryptLimit() {
         return password == null || password.getBytes(StandardCharsets.UTF_8).length <= 72;

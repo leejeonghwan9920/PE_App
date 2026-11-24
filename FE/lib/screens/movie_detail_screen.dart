@@ -5,6 +5,10 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../models/movie.dart';
+import '../models/movie_record.dart';
+import '../services/movie_record_api_service.dart';
+import '../view_models/favorite_detail_view_model.dart';
+import '../widgets/favorite_button.dart';
 import '../models/common_response.dart';
 import '../services/rating_api_service.dart';
 import '../view_models/learning_member_session.dart';
@@ -26,8 +30,6 @@ class MovieDetailScreen extends StatefulWidget {
 }
 
 class _MovieDetailScreenState extends State<MovieDetailScreen> {
-  bool _isFavorite = false;
-
   void _goBack() {
     if (context.canPop()) {
       context.pop();
@@ -36,22 +38,17 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
     }
   }
 
-  void _toggleFavorite() {
-    setState(() => _isFavorite = !_isFavorite);
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          behavior: SnackBarBehavior.floating,
-          content: Text(_isFavorite ? '즐겨찾기에 추가했습니다.' : '즐겨찾기에서 삭제했습니다.'),
-        ),
-      );
-  }
-
   Future<void> _openRatingDialog() async {
     final session = context.read<AuthSession?>();
     final generation = session?.generation;
     ApiFailure? accessFailure;
+    final favorite = context.read<FavoriteDetailViewModel?>();
+    final records = context.read<MovieRecordApiService?>();
+    final useRecord =
+        session != null &&
+        favorite?.hasLoaded == true &&
+        favorite?.isFavorite == false &&
+        records != null;
     final viewModel = MovieDetailViewModel(
       widget.movie.id,
       context.read<RatingApiService>(),
@@ -63,6 +60,20 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
       barrierDismissible: false,
       builder: (context) => RatingDialog(
         onSubmit: viewModel.register,
+        showAddToFavorite: useRecord,
+        onSubmitRecord: useRecord
+            ? (input, add) async {
+                if (!session.signedIn ||
+                    session.busy ||
+                    !session.isCurrent(generation!)) {
+                  throw const ApiFailure('다시 로그인해 주세요.');
+                }
+                final result = await records.create(
+                  MovieRecordRequest(widget.movie.id, input, add),
+                );
+                session.saveRating(generation, result.rating);
+              }
+            : null,
         onAccessFailure: session == null
             ? null
             : (error) => accessFailure = error,
@@ -72,6 +83,10 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
       return;
     }
 
+    if (saved == true && favorite != null) await favorite.load();
+    if (!mounted || (generation != null && !session!.isCurrent(generation))) {
+      return;
+    }
     final message = saved == true ? '평점을 저장했습니다.' : accessFailure?.message;
     if (message == null) return;
     ScaffoldMessenger.of(context)
@@ -128,26 +143,6 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
             Expanded(
               child: SizedBox(
                 height: 48,
-                child: OutlinedButton.icon(
-                  key: const ValueKey('favorite-button'),
-                  onPressed: _toggleFavorite,
-                  icon: Icon(
-                    _isFavorite ? Icons.bookmark : Icons.bookmark_border,
-                    size: 18,
-                  ),
-                  label: Text(_isFavorite ? '즐겨찾기됨' : '즐겨찾기'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.violet,
-                    side: const BorderSide(color: AppColors.violet),
-                    shape: const StadiumBorder(),
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: SizedBox(
-                height: 48,
                 child: ElevatedButton.icon(
                   key: const ValueKey('open-rating-dialog-button'),
                   onPressed: canRate ? _openRatingDialog : null,
@@ -180,14 +175,22 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    movie.title,
-                    style: const TextStyle(
-                      color: AppColors.onSurface,
-                      fontSize: 28,
-                      height: 36 / 28,
-                      fontWeight: FontWeight.w500,
-                    ),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          movie.title,
+                          style: const TextStyle(
+                            color: AppColors.onSurface,
+                            fontSize: 28,
+                            height: 36 / 28,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                      const FavoriteButton(),
+                    ],
                   ),
                   const SizedBox(height: 4),
                   Text(

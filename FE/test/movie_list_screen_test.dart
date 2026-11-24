@@ -27,25 +27,15 @@ void main() {
     return vm;
   }
 
-  testWidgets('Loading 중 필터와 새로고침이 잠긴다', (tester) async {
+  testWidgets('첫 로딩 중 상태를 표시하고 필터는 새 요청으로 변경할 수 있다', (tester) async {
     final service = TestTmdbService()..delay = const Duration(seconds: 1);
     await pump(tester, service);
     expect(find.byKey(const ValueKey('movie-list-loading')), findsOneWidget);
     expect(
       tester
-          .widget<IconButton>(find.byKey(const ValueKey('genre-filter-button')))
-          .onPressed,
-      isNull,
-    );
-    expect(
-      tester
           .widget<FilterChip>(find.widgetWithText(FilterChip, '전체'))
           .onSelected,
-      isNull,
-    );
-    await tester.drag(
-      find.byKey(const ValueKey('movie-list-loading')),
-      const Offset(0, 300),
+      isNotNull,
     );
     await tester.pump(const Duration(seconds: 1));
     await tester.pumpAndSettle();
@@ -66,39 +56,16 @@ void main() {
     expect(service.calls, 2);
   });
 
-  testWidgets('실패 Dialog 취소는 기존 목록 유지, 재시도는 회복', (tester) async {
-    final service = TestTmdbService();
-    final vm = await pump(tester, service);
-    await tester.pumpAndSettle();
-    service.fail = true;
-    await vm.load();
-    await tester.pumpAndSettle();
-    expect(find.byType(AlertDialog), findsOneWidget);
-    expect(vm.movies.length, 6);
-    await tester.tap(find.text('취소'));
-    await tester.pumpAndSettle();
-    expect(find.byKey(const PageStorageKey('movie-grid')), findsOneWidget);
-    await vm.load();
-    await tester.pumpAndSettle();
-    service.fail = false;
-    await tester.tap(find.text('재시도'));
-    await tester.pumpAndSettle();
-    expect(find.byType(AlertDialog), findsNothing);
-    expect(find.byKey(const PageStorageKey('movie-grid')), findsOneWidget);
-    expect(service.requestedPages, [1, 1, 1, 1]);
-  });
-
-  testWidgets('첫 요청 실패 뒤 재시도하면 Success', (tester) async {
+  testWidgets('첫 페이지 실패는 인라인 오류를 표시하고 재시도하면 회복한다', (tester) async {
     final service = TestTmdbService()..fail = true;
     await pump(tester, service);
     await tester.pumpAndSettle();
-    expect(find.text('영화 요청 실패'), findsOneWidget);
-    await tester.tap(find.text('취소'));
-    await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey('movie-list-error')), findsOneWidget);
+    expect(find.byType(AlertDialog), findsNothing);
     service.fail = false;
     await tester.tap(find.text('다시 시도'));
     await tester.pumpAndSettle();
     expect(find.byKey(const PageStorageKey('movie-grid')), findsOneWidget);
+    expect(service.requestedPages, [1, 1]);
   });
 }

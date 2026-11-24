@@ -11,9 +11,13 @@ class RatingDialog extends StatefulWidget {
     this.initialRating = 0,
     this.initialComment,
     this.onAccessFailure,
+    this.showAddToFavorite = false,
+    this.onSubmitRecord,
     super.key,
   });
 
+  final bool showAddToFavorite;
+  final Future<void> Function(RatingInput, bool)? onSubmitRecord;
   final double initialRating;
   final String? initialComment;
   final Future<void> Function(RatingInput) onSubmit;
@@ -29,6 +33,7 @@ class _RatingDialogState extends State<RatingDialog> {
     text: widget.initialComment ?? '',
   );
   bool _saving = false;
+  bool _addToFavorites = false;
   String? _error;
 
   @override
@@ -49,14 +54,20 @@ class _RatingDialogState extends State<RatingDialog> {
         _rating.toInt(),
         _comment.text == (widget.initialComment ?? '') ? null : text,
       );
-      await widget.onSubmit(input);
+      if (widget.onSubmitRecord case final save?) {
+        await save(input, widget.showAddToFavorite && _addToFavorites);
+      } else {
+        await widget.onSubmit(input);
+      }
       if (mounted) Navigator.of(context).pop(true);
     } catch (error) {
       if (mounted) {
         final failure = ApiFailure.from(error, '평점을 저장하지 못했습니다.');
         final onAccessFailure = widget.onAccessFailure;
         if (onAccessFailure != null &&
-            (failure.matches(403) || failure.matches(409))) {
+            (failure.matches(403) ||
+                failure.matches(409) ||
+                failure.code == 'MEMBER404_1')) {
           onAccessFailure(failure);
           Navigator.of(context).pop(false);
           return;
@@ -122,6 +133,15 @@ class _RatingDialogState extends State<RatingDialog> {
                 maxLines: 3,
                 decoration: const InputDecoration(labelText: '코멘트 (선택)'),
               ),
+              if (widget.showAddToFavorite)
+                CheckboxListTile(
+                  title: const Text('즐겨찾기에도 추가'),
+                  value: _addToFavorites,
+                  onChanged: _saving
+                      ? null
+                      : (value) =>
+                            setState(() => _addToFavorites = value ?? false),
+                ),
               if (_error case final message?)
                 Text(message, style: const TextStyle(color: AppColors.error)),
               SizedBox(

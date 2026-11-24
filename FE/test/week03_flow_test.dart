@@ -142,17 +142,13 @@ void main() {
     expect(find.byKey(const PageStorageKey('movie-grid')), findsOneWidget);
   });
 
-  testWidgets('상세 화면의 즐겨찾기, 별점 Dialog와 초기화를 사용할 수 있다', (tester) async {
+  testWidgets('상세의 mock 즐겨찾기가 제거되고 별점 Dialog와 초기화를 사용할 수 있다', (tester) async {
     await pumpRoute(tester, '/movies/1');
 
     expect(find.text('별빛 아래 우리'), findsOneWidget);
     expect(find.textContaining('4.5'), findsWidgets);
 
-    await tester.ensureVisible(find.byKey(const ValueKey('favorite-button')));
-    await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const ValueKey('favorite-button')));
-    await tester.pump();
-    expect(find.text('즐겨찾기에 추가했습니다.'), findsOneWidget);
+    expect(find.byKey(const ValueKey('favorite-button')), findsNothing);
 
     await tester.ensureVisible(
       find.byKey(const ValueKey('open-rating-dialog-button')),

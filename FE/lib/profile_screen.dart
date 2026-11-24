@@ -90,6 +90,14 @@ class ProfileScreen extends StatelessWidget {
                 onTap: () => context.push('/my/ratings'),
               ),
             ),
+            Card(
+              child: ListTile(
+                leading: const Icon(Icons.bookmark_border),
+                title: const Text('내 즐겨찾기'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => context.push('/my/favorites'),
+              ),
+            ),
             const SizedBox(height: 32),
             const Align(
               alignment: Alignment.centerLeft,

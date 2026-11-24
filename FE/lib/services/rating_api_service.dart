@@ -20,7 +20,7 @@ class RatingApiService {
 
   Future<List<RatingDto>> fetchPublicRatings(int memberId) async {
     final response = await _dio.get<List<dynamic>>(
-      '/v7/members/$memberId/ratings',
+      '/v8/members/$memberId/ratings',
     );
     return response.data!
         .map((item) => RatingDto.fromJson(item as Map<String, dynamic>))
@@ -29,7 +29,7 @@ class RatingApiService {
 
   Future<RatingDto> createForSession(CreateRatingRequest request) async {
     final response = await _dio.post<Map<String, dynamic>>(
-      '/v7/ratings',
+      '/v8/ratings',
       data: request.toJson(),
     );
     return _readRating(response, 201);
@@ -40,7 +40,7 @@ class RatingApiService {
     UpdateRatingRequest request,
   ) async {
     final response = await _dio.patch<Map<String, dynamic>>(
-      '/v7/ratings/$ratingId',
+      '/v8/ratings/$ratingId',
       data: request.toJson(),
     );
     return _readRating(response, 200);
@@ -48,7 +48,7 @@ class RatingApiService {
 
   Future<void> deleteForSession(int ratingId) async {
     final response = await _dio.delete<Map<String, dynamic>>(
-      '/v7/ratings/$ratingId',
+      '/v8/ratings/$ratingId',
     );
     _confirmWrite(response, 200);
   }

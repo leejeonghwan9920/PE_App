@@ -11,6 +11,8 @@ import 'services/movie_log_client.dart';
 import 'services/member_check_service.dart';
 import 'services/rating_api_service.dart';
 import 'services/auth_api_service.dart';
+import 'services/favorite_api_service.dart';
+import 'services/movie_record_api_service.dart';
 import 'services/token_storage.dart';
 import 'view_models/auth_session.dart';
 import 'view_models/learning_member_session.dart';
@@ -86,8 +88,14 @@ class _MovieLogAppState extends State<MovieLogApp> {
               widget.memberCheckService ??
               MemberCheckService(
                 _workbook,
-                version: _session == null ? 'v6' : 'v7',
+                version: _session == null ? 'v6' : 'v8',
               ),
+        ),
+        Provider<FavoriteApiService>(
+          create: (_) => FavoriteApiService(_workbook),
+        ),
+        Provider<MovieRecordApiService>(
+          create: (_) => MovieRecordApiService(_workbook),
         ),
         Provider<RatingApiService>(
           create: (_) => widget.ratingApiService ?? RatingApiService(_workbook),

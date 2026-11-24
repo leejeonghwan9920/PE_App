@@ -9,20 +9,20 @@ class AuthApiService {
 
   Future<LoginResult> login(LoginRequest request) async {
     final response = await _dio.post<Map<String, dynamic>>(
-      '/v7/auth/login',
+      '/v8/auth/login',
       data: request.toJson(),
     );
     return _result(response, LoginResult.fromJson);
   }
 
   Future<MemberInfo> getMember() async {
-    final response = await _dio.get<Map<String, dynamic>>('/v7/members/me');
+    final response = await _dio.get<Map<String, dynamic>>('/v8/members/me');
     return _result(response, MemberInfo.fromJson);
   }
 
   Future<MemberInfo> updateNickname(String nickname) async {
     final response = await _dio.patch<Map<String, dynamic>>(
-      '/v7/members/me',
+      '/v8/members/me',
       data: {'nickname': nickname.trim()},
     );
     return _result(response, MemberInfo.fromJson);

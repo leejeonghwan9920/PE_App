@@ -53,9 +53,15 @@ bool _requiresAuthentication(RequestOptions request) {
     return false;
   }
   final method = request.method;
-  if (uri.path == '/v7/members/me') return method == 'GET' || method == 'PATCH';
-  if (uri.path == '/v7/ratings') return method == 'POST';
-  return RegExp(r'^/v7/ratings/[0-9]+$').hasMatch(uri.path) &&
+  if (uri.path == '/v8/members/me') return method == 'GET' || method == 'PATCH';
+  if (uri.path == '/v8/ratings' || uri.path == '/v8/movie-records') {
+    return method == 'POST';
+  }
+  if (uri.path == '/v8/favorites') return method == 'POST' || method == 'GET';
+  if (RegExp(r'^/v8/favorites/[0-9]+$').hasMatch(uri.path)) {
+    return method == 'GET' || method == 'DELETE';
+  }
+  return RegExp(r'^/v8/ratings/[0-9]+$').hasMatch(uri.path) &&
       (method == 'PATCH' || method == 'DELETE');
 }
 

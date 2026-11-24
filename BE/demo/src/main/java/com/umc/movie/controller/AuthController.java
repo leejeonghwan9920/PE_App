@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class AuthController {
     private final AuthService auth;
 
+    @com.umc.movie.docs.LoginDocs
     @PostMapping("/login")
     public ResponseEntity<ApiResponse<LoginResponse>> login(@Valid @RequestBody LoginRequest request) {
         return ResponseEntity.ok().cacheControl(CacheControl.noStore())

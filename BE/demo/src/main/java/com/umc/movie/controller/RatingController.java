@@ -1,4 +1,5 @@
 package com.umc.movie.controller;
+import io.swagger.v3.oas.annotations.Parameter;
 import com.umc.movie.auth.LoginMember;
 import com.umc.movie.dto.*;
 import com.umc.movie.service.RatingService;
@@ -17,18 +18,18 @@ public class RatingController {
         return ratingService.getRatingsByMember(memberId);
     }
     @PostMapping("/ratings")
-    public ResponseEntity<ApiResponse<RatingResponse>> create(@LoginMember Long memberId,
+    public ResponseEntity<ApiResponse<RatingResponse>> create(@Parameter(hidden = true) @LoginMember Long memberId,
         @Valid @RequestBody CreateRatingRequest request) {
         return ResponseEntity.status(201)
             .body(ApiResponse.created("평점을 등록했습니다.", ratingService.create(memberId, request)));
     }
     @PatchMapping("/ratings/{ratingId}")
-    public ApiResponse<RatingResponse> update(@LoginMember Long memberId, @PathVariable @Positive Long ratingId,
+    public ApiResponse<RatingResponse> update(@Parameter(hidden = true) @LoginMember Long memberId, @PathVariable @Positive Long ratingId,
         @Valid @RequestBody UpdateRatingRequest request) {
         return ApiResponse.ok("평점을 수정했습니다.", ratingService.update(ratingId, memberId, request));
     }
     @DeleteMapping("/ratings/{ratingId}")
-    public ApiResponse<Void> delete(@LoginMember Long memberId, @PathVariable @Positive Long ratingId) {
+    public ApiResponse<Void> delete(@Parameter(hidden = true) @LoginMember Long memberId, @PathVariable @Positive Long ratingId) {
         ratingService.delete(ratingId, memberId);
         return ApiResponse.ok("평점을 삭제했습니다.", null);
     }
